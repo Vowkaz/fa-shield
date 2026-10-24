@@ -13,6 +13,8 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT="${1:-$ROOT/dist}"
+mkdir -p "$OUT"
+OUT=$(cd "$OUT" && pwd)  # absolute: the zip step runs from inside each target folder
 TAG=$(sed -n 's/^tag=//p' "$ROOT/UPSTREAM")
 REVISION=$(sed -n 's/^revision=//p' "$ROOT/UPSTREAM")
 VERSION="$TAG.$REVISION"
