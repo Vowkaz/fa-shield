@@ -1,0 +1,42 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Weekly: warns when uBlock Origin Lite has a newer release than UPSTREAM.
+  schedule:
+    - cron: '23 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build FA Shield
+        run: bash scripts/build.sh dist
+      - name: Check bridge and branding
+        run: |
+          for t in chromium edge firefox; do
+            grep -q 'startBridge();' dist/$t/js/background.js
+            grep -q '"nativeMessaging"' dist/$t/manifest.json
+            ! grep -q '"message": "uBlock Origin Lite"' dist/$t/_locales/en/messages.json
+          done
+          grep -q '"fa-shield@vowkaz"' dist/firefox/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fa-shield
+          path: dist/*.zip
+      - name: Newer uBOL release?
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current=$(sed -n 's/^tag=//p' UPSTREAM)
+          latest=$(gh release view --repo uBlockOrigin/uBOL-home --json tagName -q .tagName)
+          if [ "$latest" != "$current" ]; then
+            echo "::warning::uBOL $latest is out (UPSTREAM has $current). Update tag= in UPSTREAM."
+          fi
